@@ -19,7 +19,7 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 4  # Optimal: 4 × num_GPUs (PyTorch official rule), safe RSS with 200GB boot disk
+  workers: 2  # Reduced from 4: surface_distance_loss (scipy distance_transform_edt) is memory-intensive, causing OOM kills
   train_iterations_per_epoch: 4000
   max_epochs: 32
 

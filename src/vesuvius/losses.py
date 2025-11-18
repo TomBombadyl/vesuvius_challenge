@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -69,20 +70,40 @@ def morph_skeleton_loss(logits: torch.Tensor, targets: torch.Tensor, iterations:
 
 
 def surface_distance_loss(logits: torch.Tensor, targets: torch.Tensor, tolerance_mm: float = 2.0) -> torch.Tensor:
+    """
+    Memory-optimized surface distance loss.
+    Uses torch operations where possible and explicit cleanup of numpy arrays.
+    """
     probs = torch.sigmoid(logits)
     batch_losses = []
     for b in range(probs.shape[0]):
         pred = probs[b, 0]
         target = targets[b, 0]
+        
+        # Convert to numpy for distance transform (unavoidable with scipy)
         target_np = target.detach().cpu().numpy() > 0.5
         pred_np = pred.detach().cpu().numpy() > 0.5
+        
+        # Compute distance transforms
         dt_target = ndimage.distance_transform_edt(~target_np)
         dt_pred = ndimage.distance_transform_edt(~pred_np)
-        dt_target = torch.from_numpy(dt_target).to(pred.device).float()
-        dt_pred = torch.from_numpy(dt_pred).to(pred.device).float()
-        loss_tp = torch.mean(torch.clamp(dt_target / tolerance_mm, max=1.0) * (1 - pred))
-        loss_fp = torch.mean(torch.clamp(dt_pred / tolerance_mm, max=1.0) * target)
+        
+        # Convert back to torch and move to device
+        dt_target_t = torch.from_numpy(dt_target).to(pred.device, non_blocking=True).float()
+        dt_pred_t = torch.from_numpy(dt_pred).to(pred.device, non_blocking=True).float()
+        
+        # Explicit cleanup of numpy arrays to free memory immediately
+        del target_np, pred_np, dt_target, dt_pred
+        
+        # Compute loss
+        loss_tp = torch.mean(torch.clamp(dt_target_t / tolerance_mm, max=1.0) * (1 - pred))
+        loss_fp = torch.mean(torch.clamp(dt_pred_t / tolerance_mm, max=1.0) * target)
         batch_losses.append(loss_tp + loss_fp)
+        
+        # Cleanup torch tensors and force garbage collection
+        del dt_target_t, dt_pred_t
+        gc.collect()  # Force immediate cleanup of numpy arrays
+    
     return torch.stack(batch_losses).mean()
 
 
