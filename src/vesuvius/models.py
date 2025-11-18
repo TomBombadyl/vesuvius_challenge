@@ -182,7 +182,7 @@ class ResidualUNet3D(nn.Module):
         if self.ckpt_enabled and self.training and stage in self.ckpt_targets:
             segments = self.ckpt_segments.get(stage, self.ckpt_segments["default"])
             segments = max(1, min(len(module), segments))
-            return checkpoint_sequential(module, segments, tensor)
+            return checkpoint_sequential(module, segments, tensor, use_reentrant=False)
         return module(tensor)
 
 

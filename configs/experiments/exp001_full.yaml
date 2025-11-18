@@ -19,7 +19,7 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 4
+  workers: 2  # Using spawn context, 2-3 workers is optimal for 12 vCPUs
   train_iterations_per_epoch: 4000
   max_epochs: 32
 

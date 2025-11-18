@@ -88,6 +88,9 @@ def create_dataloaders(cfg: Dict, logger) -> Tuple[DataLoader, Optional[DataLoad
         num_workers=cfg["training"].get("workers", 4),
         pin_memory=True,
         drop_last=True,
+        prefetch_factor=1,  # Reduce prefetch to limit memory per worker
+        persistent_workers=False,  # Avoid memory accumulation across epochs
+        multiprocessing_context="spawn",  # Use spawn to avoid copy-on-write memory issues
     )
 
     if not val_records:
@@ -110,6 +113,9 @@ def create_dataloaders(cfg: Dict, logger) -> Tuple[DataLoader, Optional[DataLoad
         num_workers=cfg["training"].get("workers", 4),
         pin_memory=True,
         drop_last=False,
+        prefetch_factor=1,  # Reduce prefetch to limit memory per worker
+        persistent_workers=False,  # Avoid memory accumulation across epochs
+        multiprocessing_context="spawn",  # Use spawn to avoid copy-on-write memory issues
     )
     return train_loader, val_loader
 
@@ -180,7 +186,14 @@ def train_one_epoch(
             log_gpu_memory(logger, prefix=f"[Train step {step}] ")
         if log_patches:
             stats_dict = batch["patch_stats"]
-            averaged = {k: float(torch.tensor(v).float().mean().item()) for k, v in stats_dict.items()}
+            averaged = {}
+            for k, v in stats_dict.items():
+                if isinstance(v, torch.Tensor):
+                    averaged[k] = float(v.float().mean().item())
+                else:
+                    # Handle list/array of values from collate_fn
+                    v_tensor = torch.tensor(v, dtype=torch.float32) if not isinstance(v, (int, float)) else torch.tensor([v], dtype=torch.float32)
+                    averaged[k] = float(v_tensor.mean().item())
             log_patch_stats(averaged, logger)
 
     return tracker.averages()
@@ -242,7 +255,7 @@ def main():
         weight_decay=cfg["optimizer"].get("weight_decay", 1e-2),
         betas=tuple(cfg["optimizer"].get("betas", [0.9, 0.999])),
     )
-    scaler = torch.cuda.amp.GradScaler(enabled=cfg["experiment"].get("precision", "amp") == "amp")
+    scaler = torch.amp.GradScaler("cuda", enabled=cfg["experiment"].get("precision", "amp") == "amp")
 
     steps_per_epoch = len(train_loader) // cfg["training"].get("accumulate_steps", 1)
     scheduler_cfg = cfg.get("scheduler")
