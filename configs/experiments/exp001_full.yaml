@@ -19,7 +19,7 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 8
+  workers: 4
   train_iterations_per_epoch: 4000
   max_epochs: 32
 
