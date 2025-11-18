@@ -86,7 +86,7 @@ def create_dataloaders(cfg: Dict, logger) -> Tuple[DataLoader, Optional[DataLoad
         batch_size=cfg["training"]["train_batch_size"],
         shuffle=False,
         num_workers=cfg["training"].get("workers", 4),
-        pin_memory=True,
+        pin_memory=False,  # Disabled: incompatible with spawn context, causes "Pin memory thread exited unexpectedly"
         drop_last=True,
         prefetch_factor=1,  # Reduce prefetch to limit memory per worker
         persistent_workers=False,  # Avoid memory accumulation across epochs
@@ -111,7 +111,7 @@ def create_dataloaders(cfg: Dict, logger) -> Tuple[DataLoader, Optional[DataLoad
         batch_size=cfg["training"]["val_batch_size"],
         shuffle=False,
         num_workers=cfg["training"].get("workers", 4),
-        pin_memory=True,
+        pin_memory=False,  # Disabled: incompatible with spawn context, causes "Pin memory thread exited unexpectedly"
         drop_last=False,
         prefetch_factor=1,  # Reduce prefetch to limit memory per worker
         persistent_workers=False,  # Avoid memory accumulation across epochs
