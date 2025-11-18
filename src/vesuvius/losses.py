@@ -141,8 +141,8 @@ class CompositeTopologyLoss(nn.Module):
         
         # Memory optimization: compute expensive losses less frequently
         # surface_distance_loss uses scipy distance_transform_edt which is memory-intensive
-        # Default: compute every 4 steps (reduces memory pressure by 75%)
-        self.surface_distance_interval = 4
+        # Increased to 16 steps to reduce memory pressure by 93.75% (only compute every 16th step)
+        self.surface_distance_interval = 16
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]:
         total = 0.0

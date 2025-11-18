@@ -19,7 +19,7 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 2  # Reduced from 4: surface_distance_loss (scipy distance_transform_edt) is memory-intensive, causing OOM kills
+  workers: 1  # Reduced to 1: surface_distance_loss (scipy distance_transform_edt) causes OOM kills even with 2 workers
   train_iterations_per_epoch: 4000
   max_epochs: 32
 

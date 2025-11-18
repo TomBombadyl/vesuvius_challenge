@@ -147,7 +147,7 @@ Want to tweak manually instead? Use `--override` exactly as the smoke config doe
     max_epochs: 32                    # ~36–40 h wall-clock
   ```
 - Launch command (nohup-friendly):
-  ```bash
+```bash
   cd /mnt/disks/data/repos/vesuvius_challenge
   source .venv/bin/activate
   export PYTHONPATH=/mnt/disks/data/repos/vesuvius_challenge

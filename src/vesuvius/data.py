@@ -128,12 +128,24 @@ def resample_volume(volume: np.ndarray, current_spacing: Tuple[float, float, flo
 
 
 class VolumeCache:
-    def __init__(self) -> None:
+    def __init__(self, max_size: int = 50) -> None:
+        """
+        Cache for volume data with size limit to prevent memory accumulation.
+        
+        Args:
+            max_size: Maximum number of volumes to cache. When exceeded, oldest entries are evicted.
+        """
         self.cache: Dict[str, Tuple[np.ndarray, Optional[np.ndarray]]] = {}
+        self.access_order: List[str] = []  # Track access order for LRU eviction
+        self.max_size = max_size
 
     def get(self, record: VolumeRecord, preprocess_cfg: Dict, force_reload: bool = False) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         key = record.volume_id
         if not force_reload and key in self.cache:
+            # Update access order (move to end)
+            if key in self.access_order:
+                self.access_order.remove(key)
+            self.access_order.append(key)
             return self.cache[key]
 
         image = tifffile.imread(record.image_path.as_posix()).astype(np.float32)
@@ -159,7 +171,15 @@ class VolumeCache:
         if data_cfg.get("normalize"):
             image = normalize_volume(image, data_cfg["normalize"])
 
+        # Evict oldest entry if cache is full
+        if len(self.cache) >= self.max_size and key not in self.cache:
+            if self.access_order:
+                oldest_key = self.access_order.pop(0)
+                del self.cache[oldest_key]
+        
         self.cache[key] = (image, label)
+        if key not in self.access_order:
+            self.access_order.append(key)
         return image, label
 
 
