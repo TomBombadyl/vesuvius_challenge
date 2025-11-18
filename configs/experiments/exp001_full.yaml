@@ -19,7 +19,7 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 1  # Reduced to 1: surface_distance_loss (scipy distance_transform_edt) causes OOM kills even with 2 workers
+  workers: 2  # Phase 1: Test with 2 workers (serialization fix should prevent OOM)
   train_iterations_per_epoch: 4000
   max_epochs: 32
 

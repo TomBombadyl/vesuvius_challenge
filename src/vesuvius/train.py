@@ -88,8 +88,8 @@ def create_dataloaders(cfg: Dict, logger) -> Tuple[DataLoader, Optional[DataLoad
         num_workers=cfg["training"].get("workers", 4),
         pin_memory=False,  # Disabled: incompatible with spawn context, causes "Pin memory thread exited unexpectedly"
         drop_last=True,
-        prefetch_factor=1,  # Reduce prefetch to limit memory per worker
-        persistent_workers=False,  # Avoid memory accumulation across epochs
+        prefetch_factor=2,  # Increased from 1: better overlap with serialization fix
+        persistent_workers=True,  # Enabled: avoid worker restart overhead (safe with serialization)
         multiprocessing_context="spawn",  # Use spawn to avoid copy-on-write memory issues
     )
 
@@ -113,8 +113,8 @@ def create_dataloaders(cfg: Dict, logger) -> Tuple[DataLoader, Optional[DataLoad
         num_workers=cfg["training"].get("workers", 4),
         pin_memory=False,  # Disabled: incompatible with spawn context, causes "Pin memory thread exited unexpectedly"
         drop_last=False,
-        prefetch_factor=1,  # Reduce prefetch to limit memory per worker
-        persistent_workers=False,  # Avoid memory accumulation across epochs
+        prefetch_factor=2,  # Increased from 1: better overlap with serialization fix
+        persistent_workers=True,  # Enabled: avoid worker restart overhead (safe with serialization)
         multiprocessing_context="spawn",  # Use spawn to avoid copy-on-write memory issues
     )
     return train_loader, val_loader
