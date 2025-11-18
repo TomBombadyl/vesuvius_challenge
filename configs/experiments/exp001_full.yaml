@@ -19,7 +19,7 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 2  # Using spawn context, 2-3 workers is optimal for 12 vCPUs
+  workers: 4  # Optimal: 4 × num_GPUs (PyTorch official rule), safe RSS with 200GB boot disk
   train_iterations_per_epoch: 4000
   max_epochs: 32
 
