@@ -1,0 +1,29 @@
+_base_: exp001_3d_unet_topology.yaml
+
+experiment:
+  name: exp001_3d_unet_topology_full
+  output_dir: runs/exp001_3d_unet_topology_full
+
+model:
+  base_channels: 40
+  deep_supervision: true
+  activation_checkpointing:
+    enabled: true
+    apply_to: ["bottleneck", "decoder"]
+    segments:
+      bottleneck: 2
+      decoder: 2
+
+data:
+  patch_size: [72, 136, 136]
+  patch_stride: [36, 104, 104]
+
+training:
+  workers: 8
+  train_iterations_per_epoch: 4000
+  max_epochs: 32
+
+inference:
+  patch_size: [72, 136, 136]
+  overlap: [36, 104, 104]
+

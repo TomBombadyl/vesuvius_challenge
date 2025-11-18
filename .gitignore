@@ -1,0 +1,29 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments / tooling
+.venv/
+.env/
+.cursor/
+.idea/
+.vscode/
+
+# Logs / checkpoints / runs
+runs/
+*.log
+*.pt
+*.pth
+*.ckpt
+*.zip
+
+# Data dumps
+vesuvius_kaggle_data/
+temp_repo/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+

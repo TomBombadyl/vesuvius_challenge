@@ -1,0 +1,106 @@
+_base_: ../vesuvius_baseline.yaml
+
+experiment:
+  name: exp001_3d_unet_topology
+  seed: 2025
+  output_dir: runs/exp001_3d_unet_topology
+
+model:
+  type: unet3d_residual
+  base_channels: 40
+  channel_multipliers: [1, 2, 2, 4, 4]
+  blocks_per_stage: 3
+  deep_supervision: true
+  dropout: 0.15
+  activation: mish
+
+data:
+  patch_size: [80, 144, 144]
+  patch_stride: [40, 112, 112]
+  resample_spacing: [0.035, 0.035, 0.035]
+  sampler:
+    foreground_ratio: 0.65
+    rejection_probability: 0.05
+    max_retries: 8
+
+augmentation:
+  spatial:
+    rotate_deg: [-20, 20]
+    scale: [0.85, 1.2]
+    elastic:
+      enabled: true
+      sigma: 10.0
+      magnitude: 0.12
+    anisotropy_scale: [0.8, 1.3]
+    slice_jitter_voxels: 2
+    patch_dropout:
+      probability: 0.15
+      min_keep_ratio: 0.6
+  intensity:
+    gamma: [0.65, 1.6]
+    gamma_noise: 0.08
+    gaussian_noise_std: [0.0, 0.07]
+    gaussian_blur_sigma: [0.0, 1.5]
+    cutout:
+      holes: 3
+      size: [24, 64]
+
+loss:
+  components:
+    - name: weighted_bce
+      weight: 0.35
+      pos_weight: 2.8
+    - name: soft_dice
+      weight: 0.35
+      smooth: 1.0
+    - name: cldice
+      weight: 0.1
+      smooth: 1.0
+      skeleton_kernel: 3
+    - name: morph_skeleton
+      weight: 0.08
+      iterations: 3
+    - name: surface_distance
+      weight: 0.07
+      tolerance_mm: 2.0
+    - name: toploss_simple
+      weight: 0.05
+      betti_threshold: 0.2
+
+optimizer:
+  lr: 0.0003
+  betas: [0.9, 0.999]
+
+scheduler:
+  type: one_cycle
+  max_lr: 0.0006
+  pct_start: 0.2
+  anneal_strategy: cos
+  div_factor: 10.0
+
+training:
+  max_epochs: 150
+  train_batch_size: 1
+  val_batch_size: 1
+  accumulate_steps: 1
+  gradient_clip: 0.8
+  workers: 10
+  val_interval: 1
+  ema:
+    enabled: true
+    decay: 0.998
+  detect_anomaly: true
+  log_gpu_memory: true
+  log_patch_stats: true
+
+inference:
+  patch_size: [80, 144, 144]
+  overlap: [40, 96, 96]
+  tta: full_8x
+  threshold: 0.42
+  min_component_voxels: 600
+  morph_closing_radius: 3
+
+logging:
+  run_dir: runs/exp001_3d_unet_topology
+

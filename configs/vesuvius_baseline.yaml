@@ -1,0 +1,123 @@
+experiment:
+  name: vesuvius_baseline
+  seed: 1337
+  precision: amp
+  output_dir: outputs/vesuvius_baseline
+
+paths:
+  data_root: /home/dylant/gcs_mount
+  train_csv: /home/dylant/gcs_mount/train.csv
+  fold_csv: configs/folds.csv
+  checkpoint_dir: checkpoints/vesuvius_baseline
+
+data:
+  train_folds: [0, 1, 2]
+  val_folds: [3]
+  patch_size: [64, 128, 128]  # [depth, height, width]
+  patch_stride: [32, 96, 96]
+  intensity_clip: [-1200, 800]
+  resample_spacing: [0.04, 0.04, 0.04]
+  mask_unlabeled_value: 2
+  crop_foreground_margin: 16
+  normalize: zscore
+  denoise:
+    enabled: true
+    method: median3d
+    kernel_size: 3
+  sampler:
+    foreground_ratio: 0.55
+    rejection_probability: 0.1
+    max_retries: 6
+
+augmentation:
+  spatial:
+    rotate_deg: [-15, 15]
+    flip_axes: [0, 1, 2]
+    elastic:
+      enabled: true
+      sigma: 8.0
+      magnitude: 0.08
+    scale: [0.9, 1.15]
+  intensity:
+    gamma: [0.7, 1.5]
+    gaussian_noise_std: [0.0, 0.05]
+    gaussian_blur_sigma: [0.0, 1.2]
+    cutout:
+      holes: 2
+      size: [16, 48]
+
+model:
+  type: unet3d_residual
+  in_channels: 1
+  out_channels: 1
+  base_channels: 32
+  channel_multipliers: [1, 2, 2, 4, 4]
+  blocks_per_stage: 2
+  norm: instance
+  activation: mish
+  deep_supervision: true
+  dropout: 0.1
+
+loss:
+  components:
+    - name: weighted_bce
+      weight: 0.5
+      pos_weight: 2.4
+    - name: soft_dice
+      weight: 0.45
+      smooth: 1.0
+    - name: toploss_stub
+      weight: 0.05
+    - name: cldice_stub
+      weight: 0.05
+
+optimizer:
+  type: adamw
+  lr: 0.0002
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+scheduler:
+  type: cosine
+  warmup_epochs: 3
+  t_max: 120
+  min_lr: 0.000002
+
+training:
+  max_epochs: 120
+  train_batch_size: 2
+  val_batch_size: 2
+  gradient_clip: 1.0
+  accumulate_steps: 1
+  workers: 8
+  val_interval: 1
+  save_top_k: 3
+  ema:
+    enabled: true
+    decay: 0.999
+
+inference:
+  patch_size: [64, 128, 128]
+  overlap: [32, 96, 96]
+  gaussian_blend_sigma: 0.125
+  tta: flips
+  threshold: 0.45
+  min_component_voxels: 800
+  morph_closing_radius: 2
+
+postprocess:
+  remove_small_components_voxels: 600
+  fill_holes: true
+  closing_radius: 2
+
+metrics:
+  surface_dice_tolerance_mm: 2.0
+  voi: true
+  topo_score: approx
+
+logging:
+  log_every_n_steps: 25
+  checkpoint_frequency: epoch
+  wandb:
+    enabled: false
+

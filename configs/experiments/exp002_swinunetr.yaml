@@ -1,0 +1,107 @@
+_base_: ../vesuvius_baseline.yaml
+
+experiment:
+  name: exp002_swinunetr
+  seed: 4242
+  output_dir: runs/exp002_swinunetr
+
+model:
+  type: swin_unetr
+  img_size: [96, 160, 160]
+  patch_size: [2, 2, 2]
+  window_size: [7, 7, 7]
+  embed_dim: 96
+  depths: [2, 2, 6, 2]
+  num_heads: [3, 6, 12, 24]
+  drop_rate: 0.1
+  attn_drop_rate: 0.1
+  stochastic_depth_prob: 0.1
+  pretrained_backbone_ckpt: null
+
+data:
+  patch_size: [96, 160, 160]
+  patch_stride: [48, 120, 120]
+  sampler:
+    foreground_ratio: 0.6
+    rejection_probability: 0.05
+    max_retries: 6
+
+augmentation:
+  spatial:
+    rotate_deg: [-25, 25]
+    scale: [0.8, 1.25]
+    elastic:
+      enabled: true
+      sigma: 12.0
+      magnitude: 0.15
+    anisotropy_scale: [0.75, 1.35]
+    slice_jitter_voxels: 3
+    patch_dropout:
+      probability: 0.2
+      min_keep_ratio: 0.55
+  intensity:
+    gamma: [0.6, 1.7]
+    gamma_noise: 0.1
+    gaussian_noise_std: [0.0, 0.08]
+    gaussian_blur_sigma: [0.0, 1.6]
+    cutout:
+      holes: 3
+      size: [20, 60]
+
+loss:
+  components:
+    - name: weighted_bce
+      weight: 0.3
+      pos_weight: 3.0
+    - name: soft_dice
+      weight: 0.3
+    - name: cldice
+      weight: 0.15
+      smooth: 1.0
+      skeleton_kernel: 3
+    - name: morph_skeleton
+      weight: 0.1
+      iterations: 4
+    - name: surface_distance
+      weight: 0.1
+      tolerance_mm: 2.0
+    - name: toploss_simple
+      weight: 0.05
+      betti_threshold: 0.25
+
+optimizer:
+  type: adamw
+  lr: 0.00015
+  weight_decay: 0.02
+
+scheduler:
+  type: cosine
+  warmup_epochs: 5
+  t_max: 200
+  min_lr: 0.000001
+
+training:
+  max_epochs: 200
+  train_batch_size: 1
+  val_batch_size: 1
+  accumulate_steps: 3
+  gradient_clip: 0.6
+  workers: 12
+  ema:
+    enabled: true
+    decay: 0.999
+  detect_anomaly: true
+  log_gpu_memory: true
+  log_patch_stats: true
+
+inference:
+  patch_size: [96, 160, 160]
+  overlap: [48, 112, 112]
+  tta: full_8x
+  threshold: 0.4
+  min_component_voxels: 550
+  morph_closing_radius: 3
+
+logging:
+  run_dir: runs/exp002_swinunetr
+
