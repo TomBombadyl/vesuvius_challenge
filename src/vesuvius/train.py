@@ -242,6 +242,8 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     log_path = output_dir / "logs" / "train.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    # Create checkpoints directory (required for torch.save)
+    (output_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
     logger = configure_logging(log_path)
     save_config(cfg, output_dir / "config_resolved.yaml")
 
