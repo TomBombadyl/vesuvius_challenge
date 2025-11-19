@@ -41,6 +41,14 @@ Chronological record of major implementation steps, experiments, and follow-ups.
 - Launched the production run on the A100 via `nohup python -m src.vesuvius.train --config configs/experiments/exp001_full.yaml --device cuda`. Monitoring commands documented (tail log, `pgrep`, `nvidia-smi` CSV).
 - Next: capture first-epoch metrics, keep GPU trace in `runs/exp001_full/logs/vram_watch.txt`, and update README/infra docs with monitoring + runtime expectations.
 
+### 2025-11-19 — Critical Fixes & Test Run Analysis
+- **Fixed checkpoint directory creation:** Added `(output_dir / "checkpoints").mkdir()` in `train.py` to prevent `RuntimeError` after epoch completion. Root cause: `torch.save()` doesn't create parent directories.
+- **Fixed logging directory creation:** Added directory creation in `configure_logging()` in `utils.py` to prevent potential `FileNotFoundError`.
+- **Optimized DataLoader:** Increased workers to 2, `prefetch_factor` to 2, enabled `persistent_workers` for better throughput.
+- **Test run completed:** 8 epochs with 10 steps each, all checkpoints saving successfully (386MB `last.pt` verified). Loss decreasing: 1.794 → 1.593. GPU memory stable at 67GB (84% utilization), GPU utilization low at 17% (data-bound).
+- **Analysis:** Created `TRAINING_FIXES_AND_ANALYSIS.md` with comprehensive breakdown. Recommendations: increase workers to 4, batch size to 2, adjust steps/epoch to 2000 for ~6-7 hour epochs.
+- **Next:** Phase 2 optimization (4 workers, batch_size=2) before full 32-epoch run.
+
 ### Follow-ups
 - Run exp001 on GCP (target ≥0.70 SurfaceDice@2). Log metrics + patch stats in `runs/exp001...`.
 - Monitor GPU memory for large patches; adjust overlap if nearing 80 GB.
