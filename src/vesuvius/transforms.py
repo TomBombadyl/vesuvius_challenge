@@ -52,18 +52,20 @@ def random_rotate(image: np.ndarray, mask: np.ndarray, degrees: Tuple[float, flo
 
 
 def random_scale(image: np.ndarray, mask: np.ndarray, scale_range: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
+    original_shape = image.shape
     scale = random.uniform(scale_range[0], scale_range[1])
     zoom_factors = (scale, scale, scale)
     image = ndimage.zoom(image, zoom=zoom_factors, order=1)
     mask = ndimage.zoom(mask, zoom=zoom_factors, order=0)
-    return _center_crop_or_pad(image, mask)
+    return _center_crop_or_pad(image, mask, original_shape)
 
 
 def anisotropy_scale(image: np.ndarray, mask: np.ndarray, factors: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
+    original_shape = image.shape
     scales = tuple(random.uniform(factors[0], factors[1]) for _ in range(3))
     image = ndimage.zoom(image, zoom=scales, order=1)
     mask = ndimage.zoom(mask, zoom=scales, order=0)
-    return _center_crop_or_pad(image, mask)
+    return _center_crop_or_pad(image, mask, original_shape)
 
 
 def slice_jitter(image: np.ndarray, mask: np.ndarray, max_voxels: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -149,9 +151,8 @@ def cutout(image: np.ndarray, mask: np.ndarray, holes: int, size: Tuple[int, int
     return image, mask
 
 
-def _center_crop_or_pad(image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Crop/pad to original size after zoom."""
-    target_shape = mask.shape
+def _center_crop_or_pad(image: np.ndarray, mask: np.ndarray, target_shape: Tuple[int, int, int]) -> Tuple[np.ndarray, np.ndarray]:
+    """Crop/pad to target shape after zoom."""
     image = _crop_or_pad_to_shape(image, target_shape)
     mask = _crop_or_pad_to_shape(mask, target_shape)
     return image, mask
