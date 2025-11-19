@@ -170,7 +170,7 @@ def _crop_or_pad_to_shape(volume: np.ndarray, target_shape: Tuple[int, int, int]
             pad_width = [(0, 0)] * 3
             pad = (-diff) // 2
             remainder = (-diff) - pad
-            pad_width[axis] = (pad, pad + remainder)
+            pad_width[axis] = (pad, remainder)
             result = np.pad(result, pad_width, mode="constant")
     return result
 
