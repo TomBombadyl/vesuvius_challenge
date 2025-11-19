@@ -80,6 +80,9 @@ def configure_logging(log_path: Optional[PathLike] = None, level: int = logging.
     logger.addHandler(stream_handler)
 
     if log_path:
+        # Create parent directory if it doesn't exist (logging.FileHandler doesn't create directories)
+        log_file = Path(log_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(log_path)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
