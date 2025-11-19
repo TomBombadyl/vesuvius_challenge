@@ -29,20 +29,35 @@ Steps per Epoch = Total Training Samples / Batch Size
 steps_per_epoch = len(dataset) // batch_size
 ```
 
+**Example:**
+- Dataset: 10,000 images
+- Batch size: 32
+- Steps per epoch: 10,000 / 32 = 312 steps
+- **Result:** Model sees all 10,000 images exactly once per epoch
+
 **Pros:**
 - ✅ Model sees all data each epoch
 - ✅ Consistent learning signal
 - ✅ Standard practice for most tasks
 - ✅ Easy to track progress (epoch = full dataset)
+- ✅ Intuitive: "epoch" means "one pass through all data"
 
 **Cons:**
 - ❌ Can be slow for large datasets
 - ❌ Fixed time per epoch (hard to adjust)
+- ❌ Requires knowing exact dataset size upfront
 
 **When to Use:**
 - Small to medium datasets (< 100K samples)
 - When you want standard epoch semantics
 - When dataset size is fixed and known
+- **Example:** CIFAR-10 (50K images), ImageNet (1.2M images)
+
+**Why NOT for Patch-Based Training:**
+- Your `PatchDataset` doesn't have a fixed size - it generates patches randomly on-the-fly
+- Each volume can produce thousands of different patches (depending on where you sample)
+- With random sampling + augmentations, you could theoretically generate infinite unique patches
+- There's no "complete dataset" to iterate through
 
 ---
 
@@ -98,10 +113,36 @@ if train_iters is None:
 
 ### Why Fixed Steps Makes Sense for You
 
-1. **Infinite Dataset:** Your `PatchDataset` samples patches randomly, so there's no fixed "dataset size"
-2. **Time Control:** You can set epoch duration (e.g., 6-8 hours)
+**The "Infinite Samples" Concept:**
+
+Looking at your code (`data.py` lines 209-230):
+```python
+def __getitem__(self, idx: int):
+    record = self._select_record(idx)  # Random volume selection
+    patch, mask, stats = self.sampler.sample(image, label)  # Random patch location
+    # + random augmentations applied
+    return sample
+```
+
+**What makes it "infinite":**
+1. **Random Volume Selection:** `random.choice(self.records)` - picks a random volume each time
+2. **Random Patch Location:** `ForegroundPatchSampler` picks random (z, y, x) coordinates
+3. **Random Augmentations:** Each patch gets different random transforms
+4. **Result:** The same `idx` can return completely different patches each epoch!
+
+**Concrete Example:**
+- Volume size: 1000×2000×2000 voxels
+- Patch size: 72×136×136
+- Possible patch locations: ~(1000-72) × (2000-136) × (2000-136) = **~3.5 billion unique patches per volume!**
+- With 806 volumes: **~2.8 trillion possible unique patches**
+- With augmentations: Effectively infinite combinations
+
+**Why Fixed Steps:**
+1. **No Fixed Dataset Size:** Can't calculate "all patches" - there are too many
+2. **Time Control:** You can set epoch duration (e.g., 6-8 hours) regardless of dataset size
 3. **Flexibility:** Easy to adjust without recalculating dataset size
-4. **Standard Practice:** Patch-based training often uses fixed steps
+4. **Standard Practice:** Patch-based training (medical imaging, 3D volumes) always uses fixed steps
+5. **Coverage is Good Enough:** 2,000-4,000 random patches per epoch provides good diversity
 
 ---
 
