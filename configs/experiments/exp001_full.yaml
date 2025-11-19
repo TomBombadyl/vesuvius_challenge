@@ -19,8 +19,9 @@ data:
   patch_stride: [36, 104, 104]
 
 training:
-  workers: 2  # Phase 1: Test with 2 workers (serialization fix should prevent OOM)
-  train_iterations_per_epoch: 4000
+  workers: 4  # Optimized: Better GPU utilization
+  train_batch_size: 2  # Optimized: Faster training
+  train_iterations_per_epoch: 2000  # Optimized: ~6-7 hours per epoch
   max_epochs: 32
 
 inference:
