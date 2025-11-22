@@ -2,103 +2,130 @@
 
 ## Current Status
 ✅ **Training Complete** (32 epochs, 20.4% loss reduction)  
-⏳ **Next:** Run validation → threshold sweep → Kaggle submission
+✅ **Model Validated** (Phase 1: 10 volumes, 0.324 mean IoU)  
+⏳ **Next:** External validation → Full inference → Kaggle submission
 
 ---
 
-## Phase 1: Validation Inference (1-2 hours)
+## Option A: External Validation on Your Dataset (Optional)
+
+**If you have external paired volumes (image.tif + mask.tif):**
+
+```bash
+# On VM or locally
+python -m src.vesuvius.validate_external \
+  --config configs/experiments/exp001_3d_unet_topology.yaml \
+  --checkpoint checkpoints/last_exp001.pt \
+  --image-dir /path/to/images \
+  --mask-dir /path/to/masks \
+  --output-dir runs/external_validation \
+  --max-volumes 10
+```
+
+**Output:**
+- CSV with per-volume metrics (Dice, IoU, Precision, Recall) across thresholds 0.30-0.55
+- Summary statistics and best threshold recommendation
+- Spot-check for generalization
+
+**Expected Results:**
+- Dice > 0.65 ✅ Model generalizes well
+- Dice 0.55-0.65 ⚠️ Acceptable, may need threshold tuning
+- Dice < 0.55 ❌ Domain mismatch detected
+
+---
+
+## Phase 1: Full Inference (6-7 hours)
 
 **Start inference on cloud A100 GPU:**
 ```powershell
 .\run_cloud_validation.ps1
 ```
 
-This generates 806 prediction `.tif` files.
+Generates 806 predictions on training dataset.
 
 **Monitor progress:**
-```powershell
-gcloud compute ssh dylant@vesuvius-challenge --project=vesuvius-challenge-478512 --zone=us-central1-a --command="ls /mnt/disks/data/repos/vesuvius_challenge/runs/exp001_3d_unet_topology_full/infer_val/*.tif 2>/dev/null | wc -l"
+```bash
+gcloud compute ssh dylant@vesuvius-challenge --zone=us-central1-a \
+  --command="tail -20 runs/phase1_quick_test/infer.log"
 ```
 
 ---
 
-## Phase 2: Evaluate Results (5-10 minutes)
+## Phase 2: Evaluate Results (30 minutes)
 
-**After inference completes, evaluate predictions:**
+**Compute metrics:**
 ```bash
 python -m src.vesuvius.evaluate \
-  --config configs/experiments/exp001_3d_unet_topology.yaml \
-  --predictions runs/exp001_3d_unet_topology_full/infer_val \
-  --split train \
-  --output-csv runs/exp001_3d_unet_topology_full/evaluation.csv
+  --predictions runs/predictions \
+  --output runs/evaluation_results.csv
 ```
 
-Expected output:
-- Surface Dice: ~0.68–0.72
-- VOI: ~3.5–4.5
-- TopoScore: ~0.75–0.85
+Expected:
+- Surface Dice: 0.68–0.72
+- VOI: 3.5–4.5
 
 ---
 
-## Phase 3: Threshold Sweep (10-30 minutes)
+## Phase 3: Threshold Sweep (20 minutes)
 
 **Find optimal threshold:**
 ```bash
-for THRESH in 0.25 0.30 0.35 0.40 0.45 0.50; do
-  python -m src.vesuvius.evaluate \
-    --config configs/experiments/exp001_3d_unet_topology.yaml \
-    --predictions runs/exp001_3d_unet_topology_full/infer_val \
-    --split train \
-    --threshold $THRESH \
-    --output-csv runs/exp001_3d_unet_topology_full/eval_thresh_${THRESH}.csv
-done
+python optimize_threshold.py \
+  --predictions runs/predictions \
+  --output runs/threshold_analysis.csv
 ```
 
-Find threshold with highest Surface Dice (typically 0.38–0.46)
+Result: Optimal threshold typically 0.38–0.46
 
 ---
 
 ## Phase 4: Kaggle Submission (1-2 hours on Kaggle)
 
-1. Download checkpoint from VM
-2. Use `kaggle_notebook_template.py` as template
-3. Run in Kaggle notebook with hidden test data
+1. Download checkpoint & predictions from VM
+2. Use `kaggle_notebook_template.py` as starting template
+3. Run in Kaggle notebook environment
 4. Submit `submission.zip`
 
 ---
 
-## Key Files
+## Timeline
+
+| Task | Time |
+|------|------|
+| Optional: External Validation | 2-3 hours |
+| Phase 1: Full Inference | 6-7 hours |
+| Phase 2: Metrics | 30 min |
+| Phase 3: Threshold Sweep | 20 min |
+| Phase 4: Kaggle Submission | 1-2 hours |
+| **Total** | **8-14 hours** |
+
+---
+
+## Essential Files
 
 | File | Purpose |
 |------|---------|
-| `AGENT_EXECUTION_SUMMARY.md` | Full detailed guide (read if stuck) |
-| `REMOTE_VALIDATION_RUNNER.md` | Cloud inference details |
-| `TRAINING_RESULTS_COMPREHENSIVE.md` | Training metrics analysis |
-| `run_cloud_validation.ps1` | Automation script |
-| `kaggle_notebook_template.py` | Kaggle submission template |
+| `run_cloud_validation.ps1` | Phase 1 execution |
+| `download_to_gcs.ps1` | Upload external data |
+| `validate_external_gcs.py` | External validation |
+| `kaggle_notebook_template.py` | Kaggle template |
+| `START_HERE.md` | Project overview |
+| `TECHNICAL_BREAKDOWN.md` | Architecture details |
 
 ---
 
 ## Troubleshooting
 
-**Inference not starting?**
-- Verify SSH: `gcloud compute ssh dylant@vesuvius-challenge --project=vesuvius-challenge-478512 --zone=us-central1-a --command="echo test"`
-- Check GPU: `gcloud compute ssh dylant@vesuvius-challenge --project=vesuvius-challenge-478512 --zone=us-central1-a --command="nvidia-smi"`
+**Inference fails?**
+```bash
+gcloud compute ssh dylant@vesuvius-challenge --zone=us-central1-a --command="nvidia-smi"
+```
 
-**Evaluation failing?**
-- Check predictions exist: `ls runs/exp001_3d_unet_topology_full/infer_val/*.tif | wc -l` (should be 806)
-- Verify ground truth: `ls vesuvius_kaggle_data/train_labels/*.tif | wc -l` (should be 806)
-
----
-
-## Timeline
-- **Phase 1:** 1-2 hours
-- **Phase 2:** 5-10 minutes
-- **Phase 3:** 10-30 minutes
-- **Phase 4:** 1-2 hours on Kaggle
-- **Total:** ~3-5 hours (excluding Kaggle)
+**External validation Dice low?**
+- Check image normalization
+- Try different threshold: `--threshold 0.50`
+- Verify checkpoint loads correctly
 
 ---
 
-**Status:** Ready to begin! 🚀
-
+**Ready?** Execute `.\run_cloud_validation.ps1` 🚀
