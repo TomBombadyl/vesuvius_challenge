@@ -58,6 +58,30 @@ def topo_score(pred_mask: np.ndarray, gt_mask: np.ndarray) -> float:
     return 1.0 / (1.0 + betti0_diff + 0.5 * hole_diff)
 
 
+def compute_iou(pred_mask: np.ndarray, gt_mask: np.ndarray) -> float:
+    """Intersection over Union (Jaccard index)."""
+    pred_mask = pred_mask.astype(bool)
+    gt_mask = gt_mask.astype(bool)
+    intersection = np.sum(pred_mask & gt_mask)
+    union = np.sum(pred_mask | gt_mask)
+    if union == 0:
+        return 1.0 if intersection == 0 else 0.0
+    return float(intersection / union)
+
+
+def compute_dice(pred_mask: np.ndarray, gt_mask: np.ndarray) -> float:
+    """Dice similarity coefficient (F1 score)."""
+    pred_mask = pred_mask.astype(bool)
+    gt_mask = gt_mask.astype(bool)
+    intersection = np.sum(pred_mask & gt_mask)
+    card_pred = np.sum(pred_mask)
+    card_gt = np.sum(gt_mask)
+    denom = card_pred + card_gt
+    if denom == 0:
+        return 1.0 if intersection == 0 else 0.0
+    return float(2.0 * intersection / denom)
+
+
 def evaluate_metrics(pred_mask: np.ndarray, gt_mask: np.ndarray, tolerance_mm: float,
                      spacing: Tuple[float, float, float]) -> Dict[str, float]:
     return {
@@ -67,5 +91,5 @@ def evaluate_metrics(pred_mask: np.ndarray, gt_mask: np.ndarray, tolerance_mm: f
     }
 
 
-__all__ = ["evaluate_metrics", "surface_dice", "variation_of_information", "topo_score"]
+__all__ = ["evaluate_metrics", "surface_dice", "variation_of_information", "topo_score", "compute_iou", "compute_dice"]
 
