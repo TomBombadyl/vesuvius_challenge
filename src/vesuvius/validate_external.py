@@ -195,8 +195,16 @@ def main():
     
     logger.info(f"Found {len(image_files)} images to process")
     
-    # Build mask paths (assumes same filename pattern)
-    mask_files = [mask_dir / img.name for img in image_files]
+    # Build mask paths - handle naming mismatch (e.g., image: s1_z10240_y2560_x2560_0000.tif, mask: s1_z10240_y2560_x2560.tif)
+    mask_files = []
+    for img in image_files:
+        # Try exact match first
+        mask_path = mask_dir / img.name
+        if not mask_path.exists():
+            # Try removing trailing _0000 pattern
+            mask_name = img.stem.rsplit("_", 1)[0] + ".tif" if "_0000" in img.name else img.name
+            mask_path = mask_dir / mask_name
+        mask_files.append(mask_path)
     
     # Validate
     results_df = validate_external_dataset(
