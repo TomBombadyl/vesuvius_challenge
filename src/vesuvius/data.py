@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,22 +25,49 @@ class VolumeRecord:
     fold: Optional[int]
 
 
-def read_metadata(train_csv: Path, data_root: Path) -> List[VolumeRecord]:
-    df = pd.read_csv(train_csv)
+def read_metadata(csv_path: Path, data_root: Path, image_dir: Optional[str] = None, label_dir: Optional[str] = None) -> List[VolumeRecord]:
+    """
+    Read metadata from CSV file.
+    
+    Args:
+        csv_path: Path to CSV file (train.csv or test.csv)
+        data_root: Root directory containing images and labels
+        image_dir: Directory name for images (default: "train_images" or "test_images" based on CSV name)
+        label_dir: Directory name for labels (default: "train_labels", None for test)
+    """
+    df = pd.read_csv(csv_path)
     records: List[VolumeRecord] = []
+    
+    # Auto-detect image directory if not specified
+    if image_dir is None:
+        if "test" in csv_path.name.lower():
+            image_dir = "test_images"
+        else:
+            image_dir = "train_images"
+    
+    # Auto-detect label directory if not specified
+    if label_dir is None:
+        if "test" in csv_path.name.lower():
+            label_dir = None  # Test set has no labels
+        else:
+            label_dir = "train_labels"
+    
     for _, row in df.iterrows():
         volume_id = str(row.get("volume_id", row.get("id", row.get("fragment_id"))))
         img_path = row.get("image_path")
         if img_path:
             image_path = Path(img_path)
         else:
-            image_path = data_root / "train_images" / f"{volume_id}.tif"
+            image_path = data_root / image_dir / f"{volume_id}.tif"
         lbl_path = row.get("label_path")
         if lbl_path:
             label_path = Path(lbl_path)
         else:
-            default_label = data_root / "train_labels" / f"{volume_id}.tif"
-            label_path = default_label if default_label.exists() else None
+            if label_dir:
+                default_label = data_root / label_dir / f"{volume_id}.tif"
+                label_path = default_label if default_label.exists() else None
+            else:
+                label_path = None
         spacing_vals = []
         spacing = None
         for key in ("spacing_z", "spacing_y", "spacing_x"):

@@ -99,10 +99,9 @@ training:
 
 ## Documentation
 
-- **`DEVLOG.md`** - Development history and decisions
-- **`STEPS_PER_EPOCH_GUIDE.md`** - Guide on choosing steps per epoch
-- **`LOSS_COMPONENTS_EXPLAINED.md`** - Detailed loss component explanations
-- **`TEST_RUN_EVALUATION.md`** - Test run analysis and recommendations
+- **`DEVLOG.md`** - Development history and current status
+- **`TRAINING_RESULTS_COMPREHENSIVE.md`** - Detailed training metrics and analysis
+- **`REMOTE_VALIDATION_RUNNER.md`** - How to run inference on cloud VM
 
 ---
 
@@ -117,6 +116,21 @@ pytest tests/test_synthetic_pipeline.py
 
 ## Status
 
-✅ **System validated** - Test run completed successfully (32 epochs, checkpoints saving)  
-✅ **Ready for full training** - All fixes applied, optimizations in place  
-📊 **Next:** Full training run with optimized configuration
+✅ **Training Complete** - 32 epochs finished (20.4% loss reduction, 34.3% clDice improvement)  
+✅ **Checkpoint Available** - `runs/exp001_3d_unet_topology_full/checkpoints/last.pt` on cloud VM  
+⏳ **Next:** Run inference on cloud VM (A100 GPU) with full_8x TTA  
+⏳ **Then:** Threshold sweep → Post-processing audit → Kaggle submission
+
+**⚠️ Important:** Inference should run on GCP A100 VM, not locally (insufficient GPU memory)
+
+## Next Steps
+
+1. **Run Inference on Cloud VM** → See `REMOTE_VALIDATION_RUNNER.md`
+   - Use PowerShell script: `.\run_cloud_validation.ps1`
+   - Or run: `gcloud compute ssh ...` (see file for command)
+   
+2. **Evaluate Results** → Run evaluation after inference completes
+
+3. **Threshold Sweep** → Test thresholds 0.25–0.50 to find best Surface Dice
+
+4. **Kaggle Submission** → Use `kaggle_notebook_template.py` as reference

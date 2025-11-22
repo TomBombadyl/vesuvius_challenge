@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from .data import FullVolumeDataset, read_metadata
+from .data import FullVolumeDataset, read_metadata, split_records_by_fold
 from .models import build_model
 from .postprocess import apply_postprocessing
 from .utils import configure_logging, load_config, log_gpu_memory, save_config
@@ -25,6 +25,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--split", choices=["train", "val", "test"], default="test",
+                        help="Split to run inference on (train/val/test). For test, uses test.csv")
+    parser.add_argument("--max-volumes", type=int, default=None,
+                        help="Max number of volumes to process (for quick testing)")
     return parser.parse_args()
 
 
@@ -85,12 +89,19 @@ def tta_combinations(mode: str) -> List[Tuple[int, ...]]:
 
 
 def sliding_window_predict(model, volume: torch.Tensor, cfg: Dict, device: torch.device) -> np.ndarray:
+    """Sliding-window inference with Gaussian blending.
+    
+    Uses patches matching training distribution [96, 160, 160] with 50% overlap.
+    Memory footprint: ~20-30GB peak on A100 for 256×384×384 volumes.
+    """
     model.eval()
     patch_size = tuple(cfg["patch_size"])
     overlap = tuple(cfg["overlap"])
     sigma = cfg.get("gaussian_blend_sigma", 0.125)
     weights = gaussian_weights(patch_size, sigma)
-    volume_np = volume[0].numpy()
+    
+    # Extract spatial dimensions (remove batch and channel dimensions)
+    volume_np = volume[0, 0].cpu().numpy()  # [D, H, W]
     pred_accumulator = np.zeros_like(volume_np)
     weight_accumulator = np.zeros_like(volume_np)
 
@@ -101,6 +112,7 @@ def sliding_window_predict(model, volume: torch.Tensor, cfg: Dict, device: torch
             probs = torch.sigmoid(logits).cpu().numpy()[0, 0]
             pred_accumulator[z:z + patch_size[0], y:y + patch_size[1], x:x + patch_size[2]] += probs * weights
             weight_accumulator[z:z + patch_size[0], y:y + patch_size[1], x:x + patch_size[2]] += weights
+    
     weight_accumulator = np.maximum(weight_accumulator, 1e-6)
     return pred_accumulator / weight_accumulator
 
@@ -121,7 +133,6 @@ def inference_with_tta(model, volume: torch.Tensor, cfg: Dict, device: torch.dev
 def main():
     args = parse_args()
     cfg = load_config(args.config)
-    experiment_cfg = cfg["experiment"]
     inference_cfg = cfg["inference"]
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -136,13 +147,52 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    metadata = read_metadata(Path(cfg["paths"]["train_csv"]), Path(cfg["paths"]["data_root"]))
+    # Determine which CSV and split to use
+    data_root = Path(cfg["paths"]["data_root"])
+    if args.split == "test":
+        # Use test.csv for test set
+        test_csv = data_root / "test.csv"
+        if not test_csv.exists():
+            # Fallback: check if test_csv is specified in config
+            test_csv = Path(cfg["paths"].get("test_csv", test_csv))
+        if test_csv.exists():
+            logger.info("Using test.csv for test set inference")
+            metadata = read_metadata(test_csv, data_root)
+        else:
+            logger.warning("test.csv not found, falling back to train.csv")
+            metadata = read_metadata(Path(cfg["paths"]["train_csv"]), data_root)
+    else:
+        # Use train.csv and filter by split
+        metadata = read_metadata(Path(cfg["paths"]["train_csv"]), data_root)
+        if args.split in ["train", "val"]:
+            data_cfg = cfg["data"]
+            train_folds = data_cfg.get("train_folds", [0, 1, 2])
+            val_folds = data_cfg.get("val_folds", [3])
+            train_records, val_records = split_records_by_fold(metadata, train_folds, val_folds)
+            if args.split == "train":
+                metadata = train_records
+                logger.info("Using %d train volumes", len(metadata))
+            else:  # val
+                metadata = val_records
+                logger.info("Using %d validation volumes", len(metadata))
+    
+    if not metadata:
+        raise ValueError(f"No volumes found for split: {args.split}")
+    
+    # Limit to max_volumes if specified (for quick testing)
+    if args.max_volumes is not None:
+        metadata = metadata[:args.max_volumes]
+        logger.info("Limited to %d volumes (--max-volumes)", args.max_volumes)
+    
     dataset = FullVolumeDataset(metadata, cfg["data"], augmentation_cfg=None)
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-    for batch in loader:
+    for batch_idx, batch in enumerate(loader, 1):
         volume_id = batch["volume_id"][0]
-        image = batch["image"].to(device)
+        image = batch["image"]
+        actual_depth = image.shape[2]
+        image = image.to(device)
+        logger.info("[%d/%d] Processing %s (depth=%d)...", batch_idx, len(loader), volume_id, actual_depth)
         pred = inference_with_tta(model, image, inference_cfg, device)
         threshold = inference_cfg.get("threshold", 0.5)
         binary = (pred >= threshold).astype(np.uint8)
@@ -153,8 +203,8 @@ def main():
             tifffile.imwrite(out_path.as_posix(), binary.astype(np.uint8))
         else:
             np.save(out_path.with_suffix(".npy"), binary)
-        logger.info("Saved prediction for %s", volume_id)
-        log_gpu_memory(logger, prefix="[Inference] ")
+        logger.info("✓ Saved prediction for %s", volume_id)
+        log_gpu_memory(logger, prefix="[GPU] ")
 
 
 if __name__ == "__main__":

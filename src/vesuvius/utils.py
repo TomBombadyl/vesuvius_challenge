@@ -269,6 +269,87 @@ def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dic
     return items
 
 
+def mask_to_mesh(mask: np.ndarray, spacing: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+                  level: float = 0.5) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Convert 3D binary mask to mesh using marching cubes.
+    
+    Args:
+        mask: 3D binary mask array [D, H, W]
+        spacing: Voxel spacing in (z, y, x) order (for correct scaling in Isaac Sim)
+        level: Iso-value for marching cubes (0.5 for binary masks)
+    
+    Returns:
+        vertices: [N, 3] array of vertex positions
+        faces: [M, 3] array of face indices
+    
+    Requires: scikit-image
+    """
+    try:
+        from skimage import measure
+    except ImportError:
+        raise ImportError("scikit-image is required for mesh conversion. Install with: pip install scikit-image")
+    
+    # Marching cubes expects spacing in (x, y, z) order, but we pass (z, y, x)
+    # So we reverse it
+    spacing_xyz = (spacing[2], spacing[1], spacing[0])
+    verts, faces, normals, values = measure.marching_cubes(
+        mask.astype(float), level=level, spacing=spacing_xyz
+    )
+    return verts, faces
+
+
+def export_mesh_obj(vertices: np.ndarray, faces: np.ndarray, output_path: PathLike) -> None:
+    """
+    Export mesh to OBJ format (compatible with Isaac Sim).
+    
+    Args:
+        vertices: [N, 3] array of vertex positions
+        faces: [M, 3] array of face indices (0-indexed)
+        output_path: Path to save .obj file
+    """
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with out_path.open("w") as f:
+        # Write vertices
+        for v in vertices:
+            f.write(f"v {v[0]:.6f} {v[1]:.6f} {v[2]:.6f}\n")
+        
+        # Write faces (OBJ uses 1-indexed, so add 1)
+        for face in faces:
+            f.write(f"f {face[0]+1} {face[1]+1} {face[2]+1}\n")
+
+
+def export_mesh_stl(vertices: np.ndarray, faces: np.ndarray, output_path: PathLike) -> None:
+    """
+    Export mesh to STL format (compatible with Isaac Sim).
+    
+    Args:
+        vertices: [N, 3] array of vertex positions
+        faces: [M, 3] array of face indices
+        output_path: Path to save .stl file
+    
+    Requires: numpy-stl
+    """
+    try:
+        from stl import mesh
+    except ImportError:
+        raise ImportError("numpy-stl is required for STL export. Install with: pip install numpy-stl")
+    
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create mesh object
+    mesh_obj = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
+    
+    for i, face in enumerate(faces):
+        for j in range(3):
+            mesh_obj.vectors[i][j] = vertices[face[j]]
+    
+    mesh_obj.save(str(out_path))
+
+
 __all__ = [
     "load_config",
     "save_config",
@@ -288,5 +369,8 @@ __all__ = [
     "get_scheduler",
     "format_seconds",
     "flatten_dict",
+    "mask_to_mesh",
+    "export_mesh_obj",
+    "export_mesh_stl",
 ]
 

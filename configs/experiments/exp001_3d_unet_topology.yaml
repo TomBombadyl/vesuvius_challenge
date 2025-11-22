@@ -94,10 +94,11 @@ training:
   log_patch_stats: true
 
 inference:
-  patch_size: [80, 144, 144]
-  overlap: [40, 96, 96]
-  tta: full_8x
-  threshold: 0.42
+  patch_size: [64, 128, 128]        # Verified working with 5-level encoder (64/16=4 at bottleneck)
+  overlap: [32, 96, 96]             # 50% overlap for smooth blending
+  gaussian_blend_sigma: 0.125
+  tta: none                         # Start with no TTA for Phase 1 quick test
+  threshold: 0.42                   # Will optimize in Phase 4
   min_component_voxels: 600
   morph_closing_radius: 3
 

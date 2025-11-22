@@ -5,8 +5,9 @@ experiment:
   output_dir: outputs/vesuvius_baseline
 
 paths:
-  data_root: /home/dylant/gcs_mount
-  train_csv: /home/dylant/gcs_mount/train.csv
+  data_root: vesuvius_kaggle_data  # Updated: local path for inference
+  train_csv: vesuvius_kaggle_data/train.csv
+  test_csv: vesuvius_kaggle_data/test.csv
   fold_csv: configs/folds.csv
   checkpoint_dir: checkpoints/vesuvius_baseline
 
