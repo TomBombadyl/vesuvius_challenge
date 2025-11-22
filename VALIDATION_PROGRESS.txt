@@ -1,0 +1,142 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                      FULL VALIDATION - LIVE UPDATE                            ║
+║                    1,755 External Volumes Validation                          ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+STATUS UPDATE: November 22, 2025, ~18:53 UTC
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PROCESS STATUS: RUNNING ✅
+
+Volumes Processed:        3 / 1,754 (0.2%)
+Estimated Time Per Volume: ~60 seconds
+Total Time So Far:        ~3 minutes
+Estimated Total:          ~90-100 minutes
+
+Speed:                    ~1 volume per minute (processing with sliding window)
+Note: Each volume has 25 threshold computations
+
+GPU Status:               ✅ Running (A100 in use)
+Memory Usage:             ~2.2 GB (expected and healthy)
+Process ID:               1444630
+
+
+📈 WHAT'S HAPPENING NOW
+═══════════════════════════════════════════════════════════════════════════════
+
+Currently processing Volume 3: s1_z10240_y2880_x2560_0000
+
+For each volume:
+  1. Load 3D TIFF image (300×300×300)
+  2. Load 3D TIFF mask 
+  3. Normalize image to [0, 1]
+  4. Run sliding-window inference with patches [64, 128, 128]
+  5. Compute metrics at 25 different thresholds (0.30 to 0.55)
+  6. Save all results to CSV
+  7. Move to next volume
+
+
+⏱️ TIMELINE & ESTIMATES
+═══════════════════════════════════════════════════════════════════════════════
+
+Started:        18:50 UTC
+Current:        18:53 UTC  
+Elapsed:        ~3 minutes
+Volumes done:   3 / 1,754
+
+Projection (linear):
+  25% done:     ~23 minutes  → ~19:13 UTC
+  50% done:     ~45 minutes  → ~19:35 UTC
+  75% done:     ~67 minutes  → ~19:57 UTC
+  100% done:    ~90 minutes  → ~20:20 UTC
+
+Assuming consistent ~1 volume/minute speed
+
+
+📊 SAMPLE OUTPUT (From Completed Volumes)
+═══════════════════════════════════════════════════════════════════════════════
+
+Volume 1: s1_z10240_y2560_x2560_0000
+  Processing: 18:50:36 - 18:51:39 (63 seconds)
+  Prediction range: [0.0000, 0.9698]
+  ✓ Completed
+
+Volume 2: s1_z10240_y2560_x3200_0000
+  Processing: 18:51:39 - 18:52:43 (64 seconds)  
+  Prediction range: [0.0000, 0.9617]
+  ✓ Completed
+
+Volume 3: s1_z10240_y2880_x2560_0000
+  Currently processing...
+
+
+🎯 WHAT YOU'LL GET (When Done)
+═══════════════════════════════════════════════════════════════════════════════
+
+File: runs/external_validation_full/external_validation_results.csv
+
+Content: 1,754 volumes × 25 thresholds = 43,850 rows
+Columns: volume_id, threshold, dice, iou, precision, recall, tp, fp, fn
+
+Summary Statistics in Log:
+  • Mean Dice across all volumes
+  • Per-threshold analysis
+  • Distribution (best, worst, percentiles)
+
+
+📋 HOW TO KEEP MONITORING
+═══════════════════════════════════════════════════════════════════════════════
+
+SSH into VM:
+  gcloud compute ssh dylant@vesuvius-challenge --zone=us-central1-a
+
+Check latest progress:
+  tail -100 /mnt/disks/data/repos/vesuvius_challenge/runs/external_validation_full.log
+
+Count completed volumes:
+  grep -c 'Completed' /mnt/disks/data/repos/vesuvius_challenge/runs/external_validation_full.log
+
+Get completion percentage:
+  echo "Scale: $(($(grep -c 'Completed' runs/external_validation_full.log) * 100 / 1754))%"
+
+
+✨ WHY THIS IS IMPORTANT
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Defensible v1.0 Release Story
+   "Validated on 1,754 completely independent volumes from external dataset"
+
+✅ Publication-Ready Metrics
+   Mean Dice ± Std Dev across 1,754 samples
+   Full statistical analysis
+
+✅ Confidence in Generalization
+   Not just 5 volumes - comprehensive evidence
+
+✅ Data-Driven Next Steps
+   Know exactly: Can we submit now? Or domain adapt first?
+
+
+🎁 EXPECTED RESULTS (Based on 5-Volume Sample)
+═══════════════════════════════════════════════════════════════════════════════
+
+Likely outcome (rough estimates):
+  Mean Dice:     0.40-0.42
+  Best Dice:     0.46-0.48
+  Worst Dice:    0.37-0.39
+  Std Dev:       ~0.02-0.03
+
+If confirmed:
+  ✅ Model generalizes well
+  ✅ Ready for Kaggle submission
+  ✅ Strong v1.0 release
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Next Check: In ~20-30 minutes
+Status: ⏳ STILL RUNNING - NO INTERVENTION NEEDED
+Completion: Expected ~20:20 UTC (90 minutes from start)
+
+═══════════════════════════════════════════════════════════════════════════════
+
