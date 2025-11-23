@@ -1,0 +1,30 @@
+# Vesuvius Challenge - 3D Surface Segmentation
+# Production requirements for model training, inference, and validation
+# Tested on NVIDIA A100 GPU with CUDA 12.x
+
+# Core PyTorch & Compute
+torch==2.4.1
+torchvision==0.19.1
+numpy==1.26.4
+scipy==1.13.0
+
+# Data I/O
+tifffile==2024.12.12
+pandas==2.2.3
+scikit-image==0.24.1
+
+# Configuration & Utilities
+PyYAML==6.0.1
+
+# Metrics & Evaluation
+scikit-learn==1.5.2
+
+# Optional: For GPU memory monitoring
+tensorboard==2.17.1
+
+# Development & Testing (optional, comment out for production)
+pytest==8.3.4
+pytest-cov==6.0.0
+black==24.10.0
+flake8==7.1.1
+

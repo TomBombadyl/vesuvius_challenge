@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/badge/Release-v1.0-blue.svg)](https://github.com/TomBombadyl/vesuvius_challenge/releases/tag/v1.0)
 [![Python](https://img.shields.io/badge/Python-3.10+-green.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.4+-red.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Production-ready 3D segmentation model for the [Vesuvius Challenge](https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection) on Kaggle. Trained on NVIDIA A100 GPU with topology-aware losses and validated on external data.
@@ -130,30 +130,42 @@ Benefits:
 ```
 vesuvius_challenge/
 ├── checkpoints/
-│   └── last_exp001.pt                       # Trained model (43 MB)
+│   └── last_exp001.pt                       # Trained model (385 MB)
 ├── configs/
+│   ├── vesuvius_baseline.yaml               # Base configuration
 │   └── experiments/
-│       └── exp001_3d_unet_topology.yaml     # Model config
+│       └── exp001_3d_unet_topology.yaml     # Experiment config
 ├── src/vesuvius/
-│   ├── models.py                            # ResidualUNet3D
+│   ├── __init__.py
+│   ├── models.py                            # ResidualUNet3D architecture
 │   ├── train.py                             # Training loop
 │   ├── infer.py                             # Inference engine
 │   ├── data.py                              # Data pipeline
-│   ├── losses.py                            # Loss functions
-│   ├── metrics.py                           # Metrics (IoU, Dice, etc.)
-│   ├── postprocess.py                       # Post-processing
-│   ├── transforms.py                        # Augmentations
+│   ├── losses.py                            # Composite loss functions (6 components)
+│   ├── metrics.py                           # Evaluation metrics
+│   ├── postprocess.py                       # Post-processing pipeline
+│   ├── transforms.py                        # Data augmentations
+│   ├── patch_sampler.py                     # Patch extraction & sampling
 │   ├── validate_external.py                 # External validation
-│   └── [4 more modules]                     # Complete pipeline
-├── tests/
-│   └── test_synthetic_pipeline.py           # Unit tests
+│   ├── evaluate.py                          # Evaluation utilities
+│   └── utils.py                             # Config, logging, helpers
+├── runs/
+│   └── exp001_3d_unet_topology_full/
+│       └── infer_val/                       # Validation inference outputs
 ├── external_validation/
-│   └── external_validation_results.csv      # Validation results
-├── RELEASE_V1_0.md                          # Release notes
-├── V1_0_STATUS.md                           # Status report
-├── DEVLOG.md                                # Development history
-├── QUICK_START.md                           # Command reference
-└── requirements.txt                         # Dependencies
+│   ├── external_validation_results.csv      # Validation metrics
+│   └── validate_external.log                # Validation log
+├── vesuvius_kaggle_data/
+│   ├── train.csv
+│   ├── test.csv
+│   ├── train_images/
+│   ├── train_labels/
+│   └── test_images/
+├── README.md                                # Project overview (this file)
+├── CHANGELOG.md                             # Release notes & version history
+├── CONTRIBUTING.md                          # Development guide & architecture
+├── requirements.txt                         # Python dependencies
+└── .gitignore                               # Git ignore rules
 ```
 
 ---
@@ -162,13 +174,9 @@ vesuvius_challenge/
 
 | Document | Purpose |
 |----------|---------|
-| **README.md** | This file – Project overview |
-| **QUICK_START.md** | Common commands & workflows |
-| **RELEASE_V1_0.md** | Official release notes & architecture |
-| **V1_0_STATUS.md** | Detailed status report |
-| **V1_0_MANIFEST.txt** | File inventory & deployment guide |
-| **DEVLOG.md** | Development history & troubleshooting |
-| **EXTERNAL_VALIDATION_RESULTS.md** | Validation on external data |
+| **README.md** | Project overview, installation, quick start (this file) |
+| **CHANGELOG.md** | Release notes, version history, development timeline |
+| **CONTRIBUTING.md** | Development setup, architecture deep-dive, troubleshooting |
 
 ---
 
@@ -220,18 +228,15 @@ For faster iteration, use `--max-volumes 50` to train on subset.
 
 ## 🧪 Testing
 
-Run tests to verify installation:
+Run quick inference test to verify installation:
 
 ```bash
-# Unit tests
-python -m pytest tests/test_synthetic_pipeline.py -v
-
-# Quick inference test
+# Quick model test
 python -c "
 import torch
 from src.vesuvius.models import ResidualUNet3D
 
-model = ResidualUNet3D()
+model = ResidualUNet3D(in_channels=1, out_channels=1)
 x = torch.randn(1, 1, 64, 128, 128)
 y = model(x)
 print(f'Input shape: {x.shape}, Output shape: {y.shape}')
@@ -245,6 +250,7 @@ print('✓ Forward pass verified')
 ## 📊 Performance Metrics
 
 ### Training Results (Final Epoch)
+
 | Metric | Value |
 |--------|-------|
 | Train Dice | 0.82 |
@@ -255,6 +261,7 @@ print('✓ Forward pass verified')
 | Topo Score | 0.91 |
 
 ### External Validation (5 Volumes)
+
 | Metric | Mean | Best | Worst |
 |--------|------|------|-------|
 | Dice | 0.411 | 0.463 | 0.380 |
@@ -263,11 +270,12 @@ print('✓ Forward pass verified')
 | Recall | 0.487 | 0.603 | 0.375 |
 
 ### Inference Performance
+
 | Metric | Value |
 |--------|-------|
 | Speed | ~51 sec/300³ volume |
 | GPU Memory | 1.7 GB (A100) |
-| Model Size | 43 MB |
+| Model Size | 385 MB |
 | Parameters | 10.8M |
 
 ---
@@ -285,12 +293,13 @@ print('✓ Forward pass verified')
 
 ## 📦 Dependencies
 
-- **PyTorch** 2.0+ (GPU acceleration)
+- **PyTorch** 2.4+ (GPU acceleration)
 - **NumPy, SciPy** (Array operations)
 - **tifffile** (3D TIFF I/O)
 - **pandas** (Data management)
 - **PyYAML** (Configuration)
-- **tensorboard** (Logging)
+- **scikit-learn** (Metrics)
+- **tensorboard** (Logging, optional)
 
 See `requirements.txt` for exact versions.
 
@@ -303,13 +312,14 @@ See `requirements.txt` for exact versions.
 ```python
 import torch
 import tifffile as tiff
+import numpy as np
 from src.vesuvius.models import ResidualUNet3D
 from src.vesuvius.infer import sliding_window_predict
 
 # Load model
-model = ResidualUNet3D()
-state = torch.load('checkpoints/last_exp001.pt')
-model.load_state_dict(state['state_dict'])
+model = ResidualUNet3D(in_channels=1, out_channels=1)
+checkpoint = torch.load('checkpoints/last_exp001.pt')
+model.load_state_dict(checkpoint['state_dict'])
 model.to('cuda')
 model.eval()
 
@@ -348,25 +358,24 @@ python -m src.vesuvius.infer \
 1. Read: **README.md** (this file)
 2. Install: Follow installation steps above
 3. Run: Use example inference commands
-4. Reference: See QUICK_START.md for more commands
+4. Reference: See **CONTRIBUTING.md** for more details
 
 ### For Developers (Understanding the Code)
-1. Start: **RELEASE_V1_0.md** (architecture overview)
-2. Deep dive: **DEVLOG.md** (development notes)
-3. Explore: `src/vesuvius/models.py` (architecture)
-4. Check: `src/vesuvius/train.py` (training pipeline)
+1. Start: **CONTRIBUTING.md** (development setup & architecture)
+2. Deep dive: Review `src/vesuvius/models.py` (architecture code)
+3. Check: `src/vesuvius/train.py` (training pipeline)
+4. Learn: **CHANGELOG.md** (development timeline & decisions)
 
 ### For Researchers (Extending the Model)
-1. Background: **RELEASE_V1_0.md** (approach & design)
-2. Technical details: **DEVLOG.md** (implementation notes)
-3. Validation: **EXTERNAL_VALIDATION_RESULTS.md** (performance analysis)
+1. Background: **CHANGELOG.md** (approach & release notes)
+2. Technical details: **CONTRIBUTING.md** (architecture deep-dive)
+3. Validation: See `external_validation/` folder (performance analysis)
 4. Code: Start with `src/vesuvius/` modules
 
 ### For Deployment (Production Use)
-1. Plan: **V1_0_MANIFEST.txt** (deployment checklist)
-2. Status: **V1_0_STATUS.md** (current state)
-3. Guide: **QUICK_START.md** (command reference)
-4. Troubleshoot: **DEVLOG.md** (known issues)
+1. Setup: **CONTRIBUTING.md** (development setup section)
+2. Guide: **README.md** (deployment section above)
+3. Troubleshoot: **CONTRIBUTING.md** (troubleshooting section)
 
 ---
 
@@ -385,7 +394,7 @@ python -c "import torch; print(torch.__version__)"
 python -c "import torch; print(torch.cuda.is_available())"
 
 # Check checkpoint
-ls -lah checkpoints/last_exp001.pt  # Should be ~43 MB
+ls -lah checkpoints/last_exp001.pt  # Should be ~385 MB
 
 # Check config
 cat configs/experiments/exp001_3d_unet_topology.yaml | head -20
@@ -394,7 +403,7 @@ cat configs/experiments/exp001_3d_unet_topology.yaml | head -20
 python -c "
 from src.vesuvius.models import ResidualUNet3D
 import torch
-m = ResidualUNet3D()
+m = ResidualUNet3D(in_channels=1, out_channels=1)
 x = torch.randn(1, 1, 64, 128, 128)
 y = m(x)
 assert y.shape[1:] == (1, 64, 128, 128)
@@ -413,7 +422,7 @@ print('✓ All checks passed!')
 | `Shape mismatch error` | Ensure input volumes are (D, H, W) format, D should be divisible by 16 |
 | Model won't load | Check checkpoint path and PyTorch version compatibility |
 
-See **DEVLOG.md** for more troubleshooting.
+See **CONTRIBUTING.md** for more troubleshooting.
 
 ---
 
@@ -451,7 +460,7 @@ MIT License – See LICENSE file for details.
 ## 🤝 Contributing
 
 Issues, questions, and contributions welcome! Please:
-1. Check DEVLOG.md for known issues
+1. Check CONTRIBUTING.md for development setup
 2. Open an issue on GitHub
 3. Submit pull requests with clear descriptions
 
@@ -460,4 +469,3 @@ Issues, questions, and contributions welcome! Please:
 **Status:** ✅ Production Released (v1.0)  
 **Last Updated:** November 22, 2025  
 **Maintained By:** Development Team
-
