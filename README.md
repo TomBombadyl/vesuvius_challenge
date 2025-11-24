@@ -5,7 +5,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.4+-red.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Production-ready 3D segmentation model for the [Vesuvius Challenge](https://www.kaggle.com/competitions/vesuvius-challenge-ink-detection) on Kaggle. Trained on NVIDIA A100 GPU with topology-aware losses and validated on external data.
+Production-ready 3D segmentation model for the [Vesuvius Challenge](https://www.kaggle.com/competitions/vesuvius-challenge-surface-detection) on Kaggle. Trained on NVIDIA A100 GPU with topology-aware losses and validated on external data.
 
 ---
 
