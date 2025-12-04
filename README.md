@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/badge/License-CC--BY--NC--4.0-yellow.svg)](LICENSE)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Surface%20Detection-20BEFF.svg)](https://www.kaggle.com/competitions/vesuvius-challenge-surface-detection)
 
+<<<<<<< HEAD
 Production-ready 3D surface segmentation solution for the [Vesuvius Challenge - Surface Detection](https://www.kaggle.com/competitions/vesuvius-challenge-surface-detection) competition on Kaggle. Complete pipeline from CT scans to virtual unwrapping with topology-aware losses.
 
 ## Competition Context
@@ -13,6 +14,9 @@ Production-ready 3D surface segmentation solution for the [Vesuvius Challenge - 
 The Villa dei Papiri library contains the only surviving classical antiquity library, but most scrolls were carbonized by Mount Vesuvius in 79 AD. This competition aims to segment papyrus surfaces in 3D CT scans—a critical step for virtually unwrapping and reading these 2,000-year-old texts without physically opening them.
 
 **Prize Pool:** $100,000 USD | **Deadline:** February 13, 2026
+=======
+Production-ready 3D segmentation model for the [Vesuvius Challenge](https://www.kaggle.com/competitions/vesuvius-challenge-surface-detection) on Kaggle. Trained on NVIDIA A100 GPU with topology-aware losses and validated on external data.
+>>>>>>> b45939dc4cdc0bb3598925d688d37a7ffe9fedd5
 
 ---
 
