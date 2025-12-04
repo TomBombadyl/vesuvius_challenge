@@ -7,11 +7,21 @@ from scipy import ndimage
 
 
 def remove_small_components(mask: np.ndarray, min_size: int) -> np.ndarray:
+    """Remove connected components smaller than min_size voxels."""
+    # Make a copy to avoid modifying input
+    mask = mask.copy()
     labeled, num = ndimage.label(mask)
     if num == 0:
         return mask
+    
+    # Count voxels in each component (including background at index 0)
     counts = np.bincount(labeled.ravel())
+    
+    # Mark components to remove (skip background at index 0)
     remove = counts < min_size
+    remove[0] = False  # Never remove background
+    
+    # Remove small components
     remove_idx = remove[labeled]
     mask[remove_idx] = 0
     return mask

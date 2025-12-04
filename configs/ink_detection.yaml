@@ -1,0 +1,119 @@
+# Ink Detection Configuration for Vesuvius Challenge
+# This config is for detecting ink on pre-segmented/flattened papyrus surfaces
+
+_base_: vesuvius_baseline.yaml
+
+experiment:
+  name: ink_detection
+  seed: 2025
+  output_dir: runs/ink_detection
+  precision: amp
+
+model:
+  type: unet3d_residual
+  in_channels: 1
+  out_channels: 1
+  base_channels: 32
+  channel_multipliers: [1, 2, 4, 8]  # 4 levels for 2.5D input
+  blocks_per_stage: 2
+  deep_supervision: false
+  dropout: 0.1
+  activation: mish
+  norm: instance
+
+data:
+  # Ink detection typically uses pre-flattened surfaces with depth ~32-65 slices
+  patch_size: [32, 256, 256]  # Smaller depth for 2.5D surface volumes
+  patch_stride: [16, 192, 192]
+  resample_spacing: [0.04, 0.04, 0.04]  # Standard spacing for ink detection
+  sampler:
+    foreground_ratio: 0.7  # Higher ratio since ink is sparse
+    rejection_probability: 0.1
+    max_retries: 10
+
+augmentation:
+  spatial:
+    rotate_deg: [-15, 15]
+    scale: [0.9, 1.1]
+    elastic:
+      enabled: true
+      sigma: 8.0
+      magnitude: 0.1
+    anisotropy_scale: [0.9, 1.1]
+    slice_jitter_voxels: 1
+    patch_dropout:
+      probability: 0.1
+      min_keep_ratio: 0.7
+  intensity:
+    gamma: [0.7, 1.5]
+    gamma_noise: 0.05
+    gaussian_noise_std: [0.0, 0.05]
+    gaussian_blur_sigma: [0.0, 1.0]
+    cutout:
+      holes: 2
+      size: [16, 48]
+
+loss:
+  components:
+    - name: weighted_bce
+      weight: 0.4
+      pos_weight: 3.0  # Ink is sparse, weight positives higher
+    - name: soft_dice
+      weight: 0.4
+      smooth: 1.0
+    - name: cldice
+      weight: 0.2
+      smooth: 1.0
+      skeleton_kernel: 3
+
+optimizer:
+  lr: 0.0002
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+scheduler:
+  type: cosine
+  min_lr: 1.0e-6
+  warmup_epochs: 5
+
+training:
+  max_epochs: 100
+  train_batch_size: 2
+  val_batch_size: 2
+  accumulate_steps: 2
+  gradient_clip: 1.0
+  workers: 8
+  val_interval: 1
+  ema:
+    enabled: true
+    decay: 0.999
+  detect_anomaly: false
+  log_gpu_memory: true
+  log_patch_stats: false
+
+inference:
+  patch_size: [32, 256, 256]
+  overlap: [16, 192, 192]  # 50% overlap
+  gaussian_blend_sigma: 0.125
+  tta: none  # Can enable for final submission: flips, full_8x
+  threshold: 0.5  # Will optimize during validation
+  min_component_voxels: 50  # Smaller for ink (letters can be small)
+  morph_closing_radius: 1  # Minimal morphology to preserve detail
+
+postprocess:
+  remove_small_components_voxels: 50
+  fill_holes: false  # Don't fill holes in letters
+  closing_radius: 1
+
+metrics:
+  surface_dice_tolerance_mm: 1.0  # Tighter tolerance for ink
+
+logging:
+  run_dir: runs/ink_detection
+  tensorboard: true
+
+# Paths will be set at runtime or via command line
+paths:
+  data_root: vesuvius_kaggle_data
+  train_csv: vesuvius_kaggle_data/train.csv
+  test_csv: vesuvius_kaggle_data/test.csv

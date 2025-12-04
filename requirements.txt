@@ -19,6 +19,10 @@ PyYAML==6.0.1
 # Metrics & Evaluation
 scikit-learn==1.5.2
 
+# Visualization
+matplotlib==3.9.0
+Pillow==10.4.0
+
 # Optional: For GPU memory monitoring
 tensorboard==2.17.1
 
