@@ -16,7 +16,7 @@ The Villa dei Papiri library contains the only surviving classical antiquity lib
 **Prize Pool:** $100,000 USD | **Deadline:** February 13, 2026
 =======
 Production-ready 3D segmentation model for the [Vesuvius Challenge](https://www.kaggle.com/competitions/vesuvius-challenge-surface-detection) on Kaggle. Trained on NVIDIA A100 GPU with topology-aware losses and validated on external data.
->>>>>>> b45939dc4cdc0bb3598925d688d37a7ffe9fedd5
+
 
 ---
 
